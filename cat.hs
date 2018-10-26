@@ -1,45 +1,50 @@
 -- ファイルの内容を連結して標準出力に出力する。
 
 import System.Environment (getArgs)
-import System.IO (getContents, readFile, isEOF)
+import System.IO (getContents, readFile)
 import Data.List (intersperse, nub, (\\))
 import Text.Printf (printf)
 
-cat :: [String] -> [String] -> IO ()
+cat :: (a, b) -> [String] -> IO ()
 cat _ [] = return ()
-cat options files = do loop 1 files
+cat options files = do loop 1 options files
   where
     contentsOf f = if f == "-" then getContents else readFile f
-    loop _ [] = return ()
-    loop n (f:fs)  = do
+    loop _ _ [] = return ()
+    loop n opts (f:fs)  = do
       contents <- contentsOf f
-      let contents'= lineNum n . lines $ contents
+      let contents'= fst opts n . lines . snd opts $ contents
           n' = length contents' + 1
       putStr $ unlines contents'
-      loop (n') fs
+      loop (n') opts fs
 
 
 
-parse :: [String] -> ([String], [String])
+parse :: [String] -> ((a, b), [String])
 parse [] = ([], ["-"])
-parse args = (options', files)
+parse args = (setFunc options, files)
   where
-    options = [x | x <- args, head x == '-' , length x >= 2]
-    options' = nub . concat . map (words . intersperse ' ' . tail) $ options
+    args' = [x | x <- args, head x == '-' , length x >= 2]
+    options = nub . concat . map (words . intersperse ' ' . tail) $ args'
     files = args \\ options
 
-selectFunc :: [String] -> (a -> b)
-selectFunc [] = id
-selectFunc (x:xs)
-  | x == "s" = squeeze . selectFunc xs
-  | x == "n" = showNum . selectFunc xs
---  | x == "b" = nonblank . selectFunc xs
-  | x == "E" = showEnd . selectFunc xs
-  | x == "T" = showTab . selectFunc xs
-  | x == "v" = showNonP . selectFunc xs
+setFunc :: [String] -> (a, b)
+setFunc [] = (id, id)
+setFunc opt = (showNum x, f opt)
+  where
+    f [] = id
+    f (x:xs)
+      | x == "s" = flip (.) squeeze (f xs)
+      | x == "E" = flip (.) showEnd (f xs)
+      | x == "T" = flip (.) showTab (f xs)
+      | x == "v" = flip (.) showNonP (f xs)
 
-lineNum :: Int -> [String] -> [String]
-lineNum n str = zipWith (\i s -> printf "%6d  %s" i s) [n..] str
+showNum :: String -> Int -> [String] -> [String]
+showNum opt n str
+  | opt == "n" = addLineNum n str
+  | opt == "b" = if str = "" then "" else addLineNum n str
+  where
+    addLineNum m sx = zipWith (\i s -> printf "%6d %s" i s) [m..] sx
 
 main = do
   args <- getArgs
