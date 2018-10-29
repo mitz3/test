@@ -57,9 +57,14 @@ setFunc opts = (f opts, f' opts)
 
 squeeze :: String -> String
 squeeze [] = []
-squeeze (x:xs) = if x == '\n' then "\n" ++ f xs else [x] ++ squeeze xs
+squeeze (x:xs)
+  | x == '\n' = "\n" ++ f xs
+  | otherwise =  [x] ++ squeeze xs
   where f [] = []
-        f (y:ys) = if y == '\n' then f ys else [y] ++ squeeze ys
+        f [s] = "\n"
+        f (s:t:us)
+          | s == '\n' && t == '\n' = f (t:us)
+          | otherwise = [s] ++ squeeze (t:us)
 
 
 showNum :: String -> Int -> [String] -> [String]
@@ -73,12 +78,16 @@ showNum opt n (x:xs)
 
 showEnd :: String -> String
 showEnd [] = []
-showEnd (x:xs) = if x == '\n' then "$\n" else [x] ++ showEnd xs
+showEnd (x:xs)
+  | x == '\n' = "$\n" ++ showEnd xs
+  | otherwise =  [x]  ++ showEnd xs
 
 
 showTab :: String -> String
 showTab [] = []
-showTab (x:xs) = if x == '\t' then "^I" else [x] ++ showTab xs
+showTab (x:xs)
+  | x == '\t' = "^I" ++ showTab xs
+  | otherwise =  [x] ++ showTab xs
 
 
 showNonP :: String -> String
